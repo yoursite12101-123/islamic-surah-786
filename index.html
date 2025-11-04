@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Islamic 786 — Quran Surah Reader</title>
+<meta name="description" content="Islamic 786 — Full Surah Reader. Installable PWA.">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0b5c4a">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Naskh Arabic", "Noto Sans", sans-serif;
+    background: linear-gradient(180deg,#fbfbfb 0%, #f0f7ff 100%);
+    color:#111; -webkit-font-smoothing:antialiased;
+    padding:14px;
+  }
+  .app{max-width:980px;margin:0 auto}
+  header.app-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,#823a0b,#0b4e4e);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px;box-shadow:0 8px 20px rgba(8,40,60,0.12)}
+  .brand h1{font-size:20px}
+  .brand span{font-size:12px;color:#08343a;opacity:0.95}
+  .search-wrap{flex:1;min-width:200px;margin-left:12px;margin-right:12px}
+  .search{display:flex;align-items:center;background:#fff;padding:8px 12px;border-radius:12px;box-shadow:0 6px 18px rgba(6,16,40,0.06)}
+  .search input{border:0;outline:0;font-size:14px;width:100%}
+  .start-btn{background:linear-gradient(90deg,#0b5c4a,#0b4e6a);color:#fff;padding:10px 14px;border-radius:12px;border:0;font-weight:700;box-shadow:0 8px 22px rgba(11,78,106,0.16);cursor:pointer}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:18px}
+  .card{background:#fff;padding:14px;border-radius:12px;cursor:pointer;box-shadow:0 8px 26px rgba(9,30,66,0.06);transition:transform .18s ease,box-shadow .18s ease;min-height:92px;display:flex;flex-direction:column;justify-content:center}
+  .card:hover{transform:translateY(-6px);box-shadow:0 20px 44px rgba(9,30,66,0.12)}
+  .card .num{font-size:13px;font-weight:700;color:#0b4e6a}
+  .card .title{margin-top:8px;font-size:15px;direction:rtl;font-weight:800}
+  .overlay{position:fixed;inset:0;background:rgba(8,12,20,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:0;pointer-events:none;transition:opacity .25s ease}
+  .overlay.active{opacity:1;pointer-events:auto}
+  .reader-box{width:96%;max-width:980px;height:92vh;background:linear-gradient(180deg,#ffffff,#f7fbff);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(2,12,40,0.4)}
+  .reader-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #eef3f8}
+  .reader-head h2{font-size:18px}
+  .reader-controls{display:flex;gap:8px;align-items:center}
+  .btn {padding:8px 12px;border-radius:10px;border:0;font-weight:700;cursor:pointer}
+  .btn-close{background:#e34a3a;color:#fff}
+  .btn-back{background:linear-gradient(90deg,#ffb74d,#ff7a59);color:#fff}
+  .reader-content{padding:18px;overflow:auto;flex:1;background:linear-gradient(180deg,#fff, #fbfeff)}
+  .arabic{font-size:22px;line-height:2;direction:rtl;text-align:right;font-family:"Noto Naskh Arabic","Amiri",serif;word-break:break-word}
+  .meta-row{font-size:13px;color:#475569;display:flex;align-items:center;gap:10px}
+  .loader{padding:30px;text-align:center;color:#0b4e6a}
+  .note{font-size:13px;color:#6b7280;margin-top:8px}
+  @media (max-width:560px){
+    .card{min-height:84px}
+    .arabic{font-size:20px}
+    .reader-box{height:96vh;border-radius:10px}
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo">786</div>
+        <div>
+          <h1>Islamic 786</h1>
+          <span>Full Surah Reader — Arabic (installable PWA)</span>
+        </div>
+      </div>
+
+      <div class="search-wrap">
+        <div class="search">
+          <input id="searchInput" type="search" placeholder="Search Surah name or number (eg: al-baqarah or 2)..." />
+        </div>
+      </div>
+
+      <button class="start-btn" id="startBtn">Read Quran</button>
+    </header>
+
+    <main>
+      <div id="grid" class="grid" aria-live="polite">
+        <!-- Surah cards injected here -->
+      </div>
+      <div id="message" class="note" style="display:none"></div>
+    </main>
+  </div>
+
+  <!-- Fullscreen overlay reader -->
+  <div id="overlay" class="overlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="reader-box" role="document">
+      <div class="reader-head">
+        <div>
+          <h2 id="readerTitle">سورہ</h2>
+          <div class="meta-row"><span id="readerSub">Surah — Full Arabic</span></div>
+        </div>
+        <div class="reader-controls">
+          <button id="prevBtn" class="btn btn-back">Prev</button>
+          <button id="nextBtn" class="btn btn-back">Next</button>
+          <button id="closeBtn" class="btn btn-close">Close</button>
+        </div>
+      </div>
+      <div id="readerContent" class="reader-content">
+        <div id="loader" class="loader">Loading Surah...</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const API_BASE = 'https://api.alquran.cloud/v1';
+const grid = document.getElementById('grid');
+const message = document.getElementById('message');
+const overlay = document.getElementById('overlay');
+const readerTitle = document.getElementById('readerTitle');
+const readerSub = document.getElementById('readerSub');
+const readerContent = document.getElementById('readerContent');
+const loader = document.getElementById('loader');
+
+let surahList = [];
+let currentSurah = null;
+
+async function fetchJson(url){
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('Network error');
+  return await res.json();
+}
+
+async function loadSurahList(){
+  message.style.display = 'none';
+  grid.innerHTML = '<div class="loader">Loading surah list...</div>';
+  try {
+    const data = await fetchJson(`${API_BASE}/surah`);
+    surahList = data.data || [];
+    renderGrid(surahList);
+    handleHash();
+  } catch(err){
+    grid.innerHTML = '';
+    message.style.display = 'block';
+    message.innerText = 'Error loading surah list. Check your internet.';
+    const fallback = Array.from({length:114}, (_,i)=>({number:i+1, englishName:`Surah ${i+1}`, name:`سورہ ${i+1}`}));
+    surahList = fallback;
+    renderGrid(surahList);
+  }
+}
+
+function renderGrid(list){
+  grid.innerHTML = '';
+  list.forEach(s => {
+    const id = s.number || s.index || 0;
+    const titleArabic = s.name || s.englishName || `سورہ ${id}`;
+    const titleEng = s.englishName || '';
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.setAttribute('data-id', id);
+    card.innerHTML = `<div class="num">Surah ${id}</div><div class="title" style="direction:rtl">${titleArabic}</div><div style="font-size:12px;color:#6b7280;margin-top:6px">${titleEng}</div>`;
+    card.addEventListener('click', ()=> openSurah(id));
+    grid.appendChild(card);
+  });
+}
+
+async function openSurah(id){
+  currentSurah = parseInt(id);
+  readerTitle.innerText = `سورہ — ${currentSurah}`;
+  readerSub.innerText = `Loading...`;
+  readerContent.innerHTML = '<div id="loader" class="loader">Loading Surah Arabic...</div>';
+  overlay.classList.add('active');
+  overlay.setAttribute('aria-hidden','false');
+  location.hash = `surah/${currentSurah}`;
+
+  try {
+    const resp = await fetchJson(`${API_BASE}/surah/${currentSurah}/ar`);
+    const surah = resp.data;
+    readerTitle.innerText = `${surah.englishName} — ${surah.name}`;
+    readerSub.innerText = `Surah ${surah.number} • Ayahs: ${surah.numberOfAyahs}`;
+    const html = [];
+    html.push(`<div class="arabic" style="font-weight:800;font-size:26px;margin-bottom:12px;text-align:center">${surah.name}</div>`);
+    if(surah.bismillahPre) {
+      html.push(`<div class="arabic" style="font-weight:700;text-align:right;margin-bottom:6px">بِسْمِ اللَّهِ الرَّحْمَـٰنِ الرَّحِيمِ</div>`);
+    }
+    surah.ayahs.forEach(a => {
+      html.push(`<div class="arabic" style="margin-bottom:6px"><span style="font-size:20px">${a.text}</span><div style="font-size:12px;color:#6b7280;margin-top:6px;text-align:left">(${surah.number}:${a.numberInSurah})</div></div>`);
+    });
+    readerContent.innerHTML = html.join('');
+    readerContent.scrollTop = 0;
+  } catch(err){
+    readerContent.innerHTML = `<div class="loader">Failed to load Surah. Try again.</div>`;
+  }
+}
+
+function closeOverlay(){
+  overlay.classList.remove('active');
+  overlay.setAttribute('aria-hidden','true');
+  currentSurah = null;
+  history.pushState("", document.title, window.location.pathname + window.location.search);
+}
+
+function prevSurah(){
+  if(!currentSurah) return;
+  const prev = currentSurah - 1 < 1 ? 114 : currentSurah - 1;
+  openSurah(prev);
+}
+function nextSurah(){
+  if(!currentSurah) return;
+  const nxt = currentSurah + 1 > 114 ? 1 : currentSurah + 1;
+  openSurah(nxt);
+}
+
+document.getElementById('closeBtn').addEventListener('click', closeOverlay);
+document.getElementById('prevBtn').addEventListener('click', prevSurah);
+document.getElementById('nextBtn').addEventListener('click', nextSurah);
+document.getElementById('startBtn').addEventListener('click', ()=> window.scrollTo({top:document.body.scrollHeight, behavior:'smooth'}));
+
+const searchInput = document.getElementById('searchInput');
+searchInput.addEventListener('input', (e)=>{
+  const q = e.target.value.trim().toLowerCase();
+  if(!q){ renderGrid(surahList); return; }
+  const filtered = surahList.filter(s=>{
+    const names = `${s.name || ''} ${s.englishName || ''} ${s.number || ''}`.toLowerCase();
+    return names.includes(q);
+  });
+  renderGrid(filtered);
+});
+
+function handleHash(){
+  const h = location.hash.replace('#','');
+  if(h.startsWith('surah/')){
+    const id = parseInt(h.split('/')[1]);
+    if(id >=1 && id<=114) openSurah(id);
+  }
+}
+window.addEventListener('hashchange', handleHash);
+window.addEventListener('keydown', (e)=> { if(e.key==='Escape') closeOverlay(); });
+overlay.addEventListener('click', (ev)=> { if(ev.target === overlay) closeOverlay(); });
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').then(reg => {
+    console.log('SW registered', reg);
+  }).catch(err => console.warn('SW failed', err));
+}
+
+loadSurahList();
+</script>
+</body>
+</html>
