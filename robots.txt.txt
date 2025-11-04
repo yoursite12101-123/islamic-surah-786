@@ -1,3 +1,0 @@
-User-agent: *
-Allow: /
-Sitemap: https://yoursite12101-123.github.io/islamic-surah-786/sitemap.xml
